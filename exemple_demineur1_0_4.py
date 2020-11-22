@@ -211,7 +211,7 @@ class MyGame(arcade.Window):
                 self.grid_sprite_list.append(sprite)
                 self.grid_sprites[row].append(sprite)
                 self.grid_res[(row, col)] = self.agent.environment.lines[row][col]
-    def on_update(self, delta_time=36220000000000000.):
+    def on_update(self, delta_time):
         if self.agent.state not in self.agent.environment.bombs:
             x, y = random.randrange(5), random.randrange(5)
             action = (x, y)
