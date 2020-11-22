@@ -1,4 +1,4 @@
-
+import random
 import arcade
 
 # Import image tools used to create our tiles
@@ -27,7 +27,7 @@ SCREEN_HEIGHT = (HEIGHT + MARGIN) * ROW_COUNT + MARGIN
 SCREEN_TITLE = "Démineur"
 #VALUES_MINES_NEAR = [1,2,3,4]
 MINES = """
-11211
+01211
 1B3B1
 23B32
 1B3B1
@@ -68,32 +68,41 @@ FONT = "arial.ttf"
 class Environment:
     def __init__(self, text):
         self.states = {}
-        lines = text.strip().split('\n')
+        self.lines = text.strip().split('\n')
 
-        self.height = len(lines)
-        self.width = len(lines[0]) 
-        self.grid = []  
+        self.height = len(self.lines)
+        self.width = len(self.lines[0]) 
+        self.grid = {}  
+        self.bombs =[]
         for row in range(self.height):
-            for col in range(len(lines[row])):
-                self.states[(row, col)] = lines[row][col]
-    def mine(self, state, col,row):
-        action=(col, row)
+            
+            for col in range(len(self.lines[row])):
+                self.states[(row, col)] = self.lines[row][col]
+                self.grid[(row, col)] = 0
+                if self.lines[row][col] == 'B':
+                    self.bombs.append((row, col))
+                elif self.lines[row][col] == '0':
+                    self.starting_point = (row, col)
+    def mine(self, state, action):
+
 
         if self.states[action] == 'B':
-            new_state = state
             reward = REWARD_IMPOSSIBLE
         else:
+            self.grid[action] = 1
             reward = REWARD_DEFAULT
             
-        return new_state, reward
+        return action, reward
 
 class Agent:
     def __init__(self, environment):
         self.environment = environment
         self.reset()
     def reset(self):
+        self.state = self.environment.starting_point
         self.previous_state = self.state
         self.score = 0
+
     
     def do(self, action):
         self.previous_state = self.state
@@ -101,8 +110,9 @@ class Agent:
         self.score += self.reward
         self.last_action = action
 
-    def update_policy(self):
+    """def update_policy(self):
         self.policy.update(agent.previous_state, agent.state, self.last_action, self.reward)
+        """
 class Case(arcade.Sprite):
     """ Case sprite """
 
@@ -156,29 +166,30 @@ class MyGame(arcade.Window):
     Main application class.
     """
 
-    def __init__(self, width, height, title):
+    def __init__(self, agent):
         """
         Set up the application.
         """
 
-        super().__init__(width, height, title)
+        super().__init__(SCREEN_WIDTH,
+                        SCREEN_HEIGHT,
+                        SCREEN_TITLE)
         arcade.set_background_color(arcade.color.ALMOND)
         # Create a 2 dimensional array. A two dimensional
         # array is simply a list of lists.
         self.grid_sprite_list = None
         self.grid_sprites = None
-
+        self.agent = agent
         self.grid_res= None
 
 
-    def setup(self,text):
+    def setup(self):
         """
         Set the game up for play. Call this to reset the game.
         :return:
         """
         self.grid_sprite_list = arcade.SpriteList()
         self.grid_sprites = []
-        lines = text.strip().split('\n')
         self.grid_res= {}
 
         for row in range(ROW_COUNT):
@@ -189,7 +200,8 @@ class MyGame(arcade.Window):
                 x = col * (WIDTH + MARGIN) + (WIDTH / 2 + MARGIN)
                 y = row * (HEIGHT + MARGIN) + (HEIGHT / 2 + MARGIN)
                 #sprite2 = arcade.SpriteSolidColor(WIDTH, HEIGHT, arcade.color.WHITE)
-                sprite = Case(lines[row][col])
+                
+                sprite = Case(self.agent.environment.lines[row][col])
                 sprite.center_x = x
                 sprite.center_y = y
                 sprite.height=HEIGHT
@@ -198,8 +210,18 @@ class MyGame(arcade.Window):
                 sprite.position=x,y"""
                 self.grid_sprite_list.append(sprite)
                 self.grid_sprites[row].append(sprite)
-                self.grid_res[(row, col)] = lines[row][col]
-
+                self.grid_res[(row, col)] = self.agent.environment.lines[row][col]
+    def on_update(self, delta_time=36220000000000000.):
+        if self.agent.state not in self.agent.environment.bombs:
+            x, y = random.randrange(5), random.randrange(5)
+            action = (x, y)
+            self.agent.do(action)
+            #self.agent.update_policy()
+            self.update_grid(x, y)
+    def update_grid(self,row, col):
+        case=self.grid_sprites[row][col]
+        if case.is_face_down:
+                case.face_up()
     def on_draw(self):
         """
         Render the screen.
@@ -209,29 +231,16 @@ class MyGame(arcade.Window):
         arcade.start_render()
 
         self.grid_sprite_list.draw()
-    def on_mouse_press(self, x, y, button, modifiers):
-        """
-        Called when the user presses a mouse button.
-        """
-        #cases = arcade.get_sprites_at_point((x, y), self.grid_sprite_list)
 
-        # Change the x/y screen coordinates to grid coordinates
-        column = int(x // (WIDTH + MARGIN))
-        row = int(y // (HEIGHT + MARGIN))
-        case=self.grid_sprites[row][column]
-
-        if case.is_face_down:
-                case.face_up()
-        #print(f"Click coordinates: ({column}, {row}). Grid coordinates: ({case.value})")
-
-        # Make sure we are on-grid. It is possible to click in the upper right
-        # corner in the margin and go to a grid location that doesn't exist
-        
-
+    def on_key_press(self, key, modifiers):
+        if key == arcade.key.R:
+            self.agent.reset()
+            self.setup()
 def main():
     environment = Environment(MINES)
-    my_game=MyGame(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
-    my_game.setup(MINES)
+    agent = Agent(environment)
+    my_game=MyGame(agent)
+    my_game.setup()
     arcade.run()
 
 
