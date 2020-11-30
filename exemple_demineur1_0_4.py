@@ -23,7 +23,7 @@ MARGIN = 5
 
 # Do the math to figure out our screen dimensions
 SCREEN_WIDTH = (WIDTH + MARGIN) * COLUMN_COUNT + MARGIN
-SCREEN_HEIGHT = (HEIGHT + MARGIN) * ROW_COUNT + MARGIN
+SCREEN_HEIGHT = (HEIGHT + MARGIN) * ROW_COUNT + MARGIN+60
 SCREEN_TITLE = "Démineur"
 #VALUES_MINES_NEAR = [1,2,3,4]
 MINES = """
@@ -35,22 +35,20 @@ MINES = """
 """
 # Colors
 BACKGROUND_COLOR = 119, 110, 101
-EMPTY_CELL = 205, 193, 180
+BACKGROUND_COLOR_CASE = 238, 228, 218
+BACKGROUND_COLOR_TABLE = 192,192,192
+
 TEXT_COLOR_DARK = 119, 110, 101
 TEXT_COLOR_LIGHT = 245, 149, 99
-SQUARE_COLORS = (205, 193, 180), \
-                (238, 228, 218), \
-                (237, 224, 200), \
-                (242, 177, 121), \
-                (245, 149, 99), \
-                (246, 124, 95), \
-                (246, 94, 59), \
-                (237, 207, 114), \
-                (237, 204, 97), \
-                (237, 200, 80), \
-                (237, 197, 63), \
-                (237, 194, 46), \
-                (62, 57, 51)
+TEXT_COLOR_1 = 178,34,34
+TEXT_COLOR_2= 30,144,255
+TEXT_COLOR_3= 0,128,0
+TEXT_COLOR_4= 75,0,130
+SQUARE_COLORS = TEXT_COLOR_LIGHT,   \
+                TEXT_COLOR_1, \
+                TEXT_COLOR_2,   \
+                TEXT_COLOR_3,   \
+                TEXT_COLOR_4    \
 
 # Sizes
 BOARD_SIZE = 4
@@ -58,7 +56,7 @@ SQUARE_SIZE = 40
 TEXT_SIZE = 20
 #REWARD
 REWARD_GOAL = 60
-REWARD_DEFAULT = -1
+REWARD_DEFAULT = 1
 REWARD_STUCK = -6
 REWARD_IMPOSSIBLE = -60
 
@@ -102,6 +100,7 @@ class Agent:
         self.state = self.environment.starting_point
         self.previous_state = self.state
         self.score = 0
+        self.timer=0
 
     
     def do(self, action):
@@ -133,7 +132,7 @@ class Case(arcade.Sprite):
 
     def face_up(self):
         """ Turn case face-up """
-        img = Image.new('RGB', (SQUARE_SIZE, SQUARE_SIZE), color=SQUARE_COLORS[1])
+        img = Image.new('RGB', (SQUARE_SIZE, SQUARE_SIZE), color=BACKGROUND_COLOR_CASE)
         #
         d = ImageDraw.Draw(img)
         font = ImageFont.truetype(FONT, TEXT_SIZE)
@@ -146,9 +145,11 @@ class Case(arcade.Sprite):
             color = TEXT_COLOR_DARK
             d.text((x, y), text, fill=color, font=font)
             self.texture = arcade.Texture(f"{self.value}", img)
-            #self.texture = arcade.load_texture(":resources:images/tiles/bomb.png")
+            #self.texture = arcade.load_texture(":resources:images/tiles/bomb.png",width=WIDTH,height=HEIGHT)
+
+
         else:
-            color = TEXT_COLOR_LIGHT
+            color = SQUARE_COLORS[int(self.value)]
             d.text((x, y), text, fill=color, font=font)
             self.texture = arcade.Texture(f"{self.value}", img)
         
@@ -218,6 +219,8 @@ class MyGame(arcade.Window):
             self.agent.do(action)
             #self.agent.update_policy()
             self.update_grid(x, y)
+            self.agent.timer+=delta_time
+
     def update_grid(self,row, col):
         case=self.grid_sprites[row][col]
         if case.is_face_down:
@@ -229,6 +232,10 @@ class MyGame(arcade.Window):
 
         # This command has to happen before we start drawing
         arcade.start_render()
+        output = f"Score: {self.agent.score:.3f}"
+        arcade.draw_text(output, 20, SCREEN_HEIGHT - 20, arcade.color.BLACK, 16)
+        output = f"Temps: {self.agent.timer:.3f}"
+        arcade.draw_text(output, 20, SCREEN_HEIGHT - 50, arcade.color.BLACK, 16)
 
         self.grid_sprite_list.draw()
 
