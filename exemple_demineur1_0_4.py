@@ -1,10 +1,17 @@
 import random
 import arcade
+from sklearn.neural_network import MLPRegressor
+import numpy as np
 
 # Import image tools used to create our tiles
 from PIL import Image
 from PIL import ImageDraw
 from PIL import ImageFont
+
+DEFAULT_LEARNING_RATE = 1e-3
+DEFAULT_DISCOUNT_FACTOR = 0.1
+NOISE_INIT = 0.5
+NOISE_DECAY = 0.9
 
 # Face down image
 FACE_DOWN_IMAGE = ":resources:images/tiles/brickBrown.png"
@@ -27,7 +34,7 @@ SCREEN_HEIGHT = (HEIGHT + MARGIN) * ROW_COUNT + MARGIN+60
 SCREEN_TITLE = "Démineur"
 #VALUES_MINES_NEAR = [1,2,3,4]
 MINES = """
-01211
+11211
 1B3B1
 23B32
 1B3B1
@@ -67,7 +74,6 @@ class Environment:
     def __init__(self, text):
         self.states = {}
         self.lines = text.strip().split('\n')
-
         self.height = len(self.lines)
         self.width = len(self.lines[0]) 
         self.grid = {}  
@@ -79,8 +85,7 @@ class Environment:
                 self.grid[(row, col)] = 0
                 if self.lines[row][col] == 'B':
                     self.bombs.append((row, col))
-                elif self.lines[row][col] == '0':
-                    self.starting_point = (row, col)
+                
     def mine(self, state, action):
 
 
@@ -95,23 +100,100 @@ class Environment:
 class Agent:
     def __init__(self, environment):
         self.environment = environment
+        self.policy = Policy(environment)
         self.reset()
     def reset(self):
-        self.state = self.environment.starting_point
+        x, y = 3,3
+        start_case = (x, y)
+        self.state = self.mise_en_place(x,y)
         self.previous_state = self.state
+
         self.score = 0
         self.timer=0
 
-    
+    def board_to_state(self, board, grid):
+        vector = []
+        for v in board:
+                if grid[v] == 1:
+                    if v == '1':
+                        vector.append(0)
+                    elif v == '2':
+                        vector.append(1)
+                    elif v == '3':
+                        vector.append(2)
+        return vector
+    def mise_en_place(self, x, y):
+        #(2,0)
+        
+        cases_possibles = []
+        cases_possibles.append((self.environment.states[(x-1,y-1)],self.environment.grid[(x-1,y-1)]))
+        cases_possibles.append((self.environment.states[(x,y-1)],self.environment.grid[(x,y-1)]))
+        cases_possibles.append((self.environment.states[(x+1,y-1)],self.environment.grid[(x+1,y-1)]))
+        cases_possibles.append((self.environment.states[(x-1,y)],self.environment.grid[(x-1,y)]))
+        cases_possibles.append((self.environment.states[(x+1,y)],self.environment.grid[(x+1,y)]))
+        cases_possibles.append((self.environment.states[(x-1,y+1)],self.environment.grid[(x-1,y+1)]))
+        cases_possibles.append((self.environment.states[(x,y+1)],self.environment.grid[(x,y+1)]))
+        cases_possibles.append((self.environment.states[(x+1,y+1)],self.environment.grid[(x+1,y+1)]))
+
+        return cases_possibles
+    def best_action(self):
+        return self.policy.best_action(self.state)
+
     def do(self, action):
-        self.previous_state = self.state
+        self.previous_state = self.board_to_state(self.environment.states, self.environment.grid)
         self.state, self.reward = self.environment.mine(self.state, action)
+        self.state = self.board_to_state(self.environment.states, self.environment.grid)
         self.score += self.reward
         self.last_action = action
 
-    """def update_policy(self):
-        self.policy.update(agent.previous_state, agent.state, self.last_action, self.reward)
-        """
+    def update_policy(self):
+        self.policy.update(self.previous_state, self.state, self.last_action, self.reward)
+    
+class Policy:
+    def __init__(self, environment,
+                 learning_rate = DEFAULT_LEARNING_RATE,
+                 discount_factor = DEFAULT_DISCOUNT_FACTOR):
+       
+        self.learning_rate = learning_rate
+        self.discount_factor = discount_factor
+        self.mlp = MLPRegressor(hidden_layer_sizes = (20, ),
+                                max_iter = 1,
+                                activation = 'tanh', 
+                                solver = 'sgd',
+                                learning_rate_init = self.learning_rate,
+                                warm_start = True)
+        self.actions = list(range(8)) # Crée une liste de size*size actions
+        self.noise = NOISE_INIT
+        
+        #On initialise le ANN avec 8 entrées, 2 sorties
+        self.mlp.fit([[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]], [[0, 0]])
+    """
+    def __repr__(self):
+        res = ''
+        for state in self.table:
+            res += f'{state}\t{self.table[state]}\n'
+        return res
+    """
+    def best_action(self, state):
+        #self.proba_state = self.mlp.predict_proba([state])[0] #Le RN fournit un vecteur de probabilité
+        print("hey")
+        print(state)
+        print("hello",self.mlp.predict([state]))
+        self.proba_state = self.mlp.predict([state])[0] #Le RN fournit un vecteur de probabilité
+        self.noise *= NOISE_DECAY
+        self.proba_state += np.random.rand(len(self.proba_state)) * self.noise
+        action = self.actions[np.argmax(self.proba_state)] #On choisit l'action la plus probable
+        return action
+    def update(self, previous_state, state, last_action, reward):
+        #Q(st, at) = Q(st, at) + learning_rate * (reward + discount_factor * max(Q(state)) - Q(st, at))
+        #Mettre le réseau de neurone à jour, au lieu de la table
+        maxQ = np.amax(self.proba_state)
+        self.proba_state[last_action] = reward + self.discount_factor * maxQ
+        inputs = [state]
+        outputs = [self.proba_state]
+        #print(inputs, outputs)
+        self.mlp.fit(inputs, outputs)
+
 class Case(arcade.Sprite):
     """ Case sprite """
 
@@ -214,8 +296,9 @@ class MyGame(arcade.Window):
                 self.grid_res[(row, col)] = self.agent.environment.lines[row][col]
     def on_update(self, delta_time):
         if self.agent.state not in self.agent.environment.bombs:
-            x, y = random.randrange(5), random.randrange(5)
-            action = (x, y)
+            #x, y = random.randrange(5), random.randrange(5)
+            #action = (x, y)
+            action = self.agent.best_action()
             self.agent.do(action)
             #self.agent.update_policy()
             self.update_grid(x, y)
