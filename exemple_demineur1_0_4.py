@@ -35,9 +35,9 @@ SCREEN_TITLE = "Démineur"
 #VALUES_MINES_NEAR = [1,2,3,4]
 MINES = """
 11211
-1B3B1
-23B32
-1B3B1
+15351
+23532
+15351
 11211
 """
 # Colors
@@ -83,13 +83,11 @@ class Environment:
             for col in range(len(self.lines[row])):
                 self.states[(row, col)] = self.lines[row][col]
                 self.grid[(row, col)] = 0
-                if self.lines[row][col] == 'B':
+                if self.lines[row][col] == '5':
                     self.bombs.append((row, col))
                 
     def mine(self, state, action):
-
-
-        if self.states[action] == 'B':
+        if self.states[action] == '5':
             reward = REWARD_IMPOSSIBLE
         else:
             self.grid[action] = 1
@@ -104,7 +102,7 @@ class Agent:
         self.reset()
     def reset(self):
         x, y = 3,3
-        start_case = (x, y)
+        #start_case = (x, y)
         self.state = self.mise_en_place(x,y)
         self.previous_state = self.state
 
@@ -122,20 +120,28 @@ class Agent:
                     elif v == '3':
                         vector.append(2)
         return vector
+    
+    def transfoCase(self,x,y,listeState):
+        if self.environment.grid[(x,y)]==0:
+            listeState.append(self.environment.states[(x,y)])
+        else:
+            listeState.append(8)
+    
     def mise_en_place(self, x, y):
         #(2,0)
         
         cases_possibles = []
-        cases_possibles.append((self.environment.states[(x-1,y-1)],self.environment.grid[(x-1,y-1)]))
-        cases_possibles.append((self.environment.states[(x,y-1)],self.environment.grid[(x,y-1)]))
-        cases_possibles.append((self.environment.states[(x+1,y-1)],self.environment.grid[(x+1,y-1)]))
-        cases_possibles.append((self.environment.states[(x-1,y)],self.environment.grid[(x-1,y)]))
-        cases_possibles.append((self.environment.states[(x+1,y)],self.environment.grid[(x+1,y)]))
-        cases_possibles.append((self.environment.states[(x-1,y+1)],self.environment.grid[(x-1,y+1)]))
-        cases_possibles.append((self.environment.states[(x,y+1)],self.environment.grid[(x,y+1)]))
-        cases_possibles.append((self.environment.states[(x+1,y+1)],self.environment.grid[(x+1,y+1)]))
+        self.transfoCase(x-1,y-1,cases_possibles)
+        self.transfoCase(x,y-1,cases_possibles)
+        self.transfoCase(x+1,y-1,cases_possibles)
+        self.transfoCase(x-1,y,cases_possibles)
+        self.transfoCase(x+1,y,cases_possibles)
+        self.transfoCase(x-1,y+1,cases_possibles)
+        self.transfoCase(x,y+1,cases_possibles)
+        self.transfoCase(x+1,y+1,cases_possibles)
 
         return cases_possibles
+
     def best_action(self):
         return self.policy.best_action(self.state)
 
@@ -166,7 +172,7 @@ class Policy:
         self.noise = NOISE_INIT
         
         #On initialise le ANN avec 8 entrées, 2 sorties
-        self.mlp.fit([[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]], [[0, 0]])
+        self.mlp.fit([[0,0,0,0,0,0,0,0]], [[0, 0]])
     """
     def __repr__(self):
         res = ''
@@ -176,9 +182,9 @@ class Policy:
     """
     def best_action(self, state):
         #self.proba_state = self.mlp.predict_proba([state])[0] #Le RN fournit un vecteur de probabilité
-        print("hey")
+        """print("hey")
         print(state)
-        print("hello",self.mlp.predict([state]))
+        print("hello",self.mlp.predict([state]))"""
         self.proba_state = self.mlp.predict([state])[0] #Le RN fournit un vecteur de probabilité
         self.noise *= NOISE_DECAY
         self.proba_state += np.random.rand(len(self.proba_state)) * self.noise
@@ -301,7 +307,7 @@ class MyGame(arcade.Window):
             action = self.agent.best_action()
             self.agent.do(action)
             #self.agent.update_policy()
-            self.update_grid(x, y)
+            self.update_grid(action)
             self.agent.timer+=delta_time
 
     def update_grid(self,row, col):
