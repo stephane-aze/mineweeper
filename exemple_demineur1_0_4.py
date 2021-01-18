@@ -103,7 +103,7 @@ class Agent:
     
     def reset(self):
         x, y = 3,3
-        case_courante = (x, y)
+        #case_courante = (x, y)
         self.state = self.mise_en_place(x,y)
         self.previous_state = self.state
         self.score = 0
