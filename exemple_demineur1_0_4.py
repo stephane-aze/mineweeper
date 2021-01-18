@@ -129,7 +129,6 @@ class Agent:
     
     def mise_en_place(self, x, y):
         #(2,0)
-        
         cases_possibles = []
         self.transfoCase(x-1,y-1,cases_possibles)
         self.transfoCase(x,y-1,cases_possibles)
@@ -173,6 +172,7 @@ class Policy:
         
         #On initialise le ANN avec 8 entrées, 2 sorties
         self.mlp.fit([[0,0,0,0,0,0,0,0]], [[0, 0]])
+    
     """
     def __repr__(self):
         res = ''
@@ -180,8 +180,8 @@ class Policy:
             res += f'{state}\t{self.table[state]}\n'
         return res
     """
+
     def best_action(self, state):
-        #self.proba_state = self.mlp.predict_proba([state])[0] #Le RN fournit un vecteur de probabilité
         """print("hey")
         print(state)
         print("hello",self.mlp.predict([state]))"""
@@ -190,6 +190,7 @@ class Policy:
         self.proba_state += np.random.rand(len(self.proba_state)) * self.noise
         action = self.actions[np.argmax(self.proba_state)] #On choisit l'action la plus probable
         return action
+
     def update(self, previous_state, state, last_action, reward):
         #Q(st, at) = Q(st, at) + learning_rate * (reward + discount_factor * max(Q(state)) - Q(st, at))
         #Mettre le réseau de neurone à jour, au lieu de la table
@@ -300,6 +301,7 @@ class MyGame(arcade.Window):
                 self.grid_sprite_list.append(sprite)
                 self.grid_sprites[row].append(sprite)
                 self.grid_res[(row, col)] = self.agent.environment.lines[row][col]
+    
     def on_update(self, delta_time):
         if self.agent.state not in self.agent.environment.bombs:
             #x, y = random.randrange(5), random.randrange(5)
@@ -310,7 +312,7 @@ class MyGame(arcade.Window):
             self.update_grid(action)
             self.agent.timer+=delta_time
 
-    def update_grid(self,row, col):
+    def update_grid(self,action):
         case=self.grid_sprites[row][col]
         if case.is_face_down:
                 case.face_up()
