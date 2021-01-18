@@ -87,7 +87,7 @@ class Environment:
                     self.bombs.append((row, col))
                 
     def mine(self, state, action):
-        if self.states[action] == '5':
+        if self.states[action] == 5:
             reward = REWARD_IMPOSSIBLE
         else:
             self.grid[action] = 1
@@ -100,12 +100,12 @@ class Agent:
         self.environment = environment
         self.policy = Policy(environment)
         self.reset()
+    
     def reset(self):
         x, y = 3,3
-        #start_case = (x, y)
+        case_courante = (x, y)
         self.state = self.mise_en_place(x,y)
         self.previous_state = self.state
-
         self.score = 0
         self.timer=0
 
@@ -119,6 +119,8 @@ class Agent:
                         vector.append(1)
                     elif v == '3':
                         vector.append(2)
+                    else :
+                        vector.append(5) 
         return vector
     
     def transfoCase(self,x,y,listeState):
@@ -145,6 +147,7 @@ class Agent:
         return self.policy.best_action(self.state)
 
     def do(self, action):
+        print(action)
         self.previous_state = self.board_to_state(self.environment.states, self.environment.grid)
         self.state, self.reward = self.environment.mine(self.state, action)
         self.state = self.board_to_state(self.environment.states, self.environment.grid)
@@ -185,7 +188,7 @@ class Policy:
         """print("hey")
         print(state)
         print("hello",self.mlp.predict([state]))"""
-        self.proba_state = self.mlp.predict([state])[0] #Le RN fournit un vecteur de probabilité
+        self.proba_state = self.mlp.predict([state]) #Le RN fournit un vecteur de probabilité
         self.noise *= NOISE_DECAY
         self.proba_state += np.random.rand(len(self.proba_state)) * self.noise
         action = self.actions[np.argmax(self.proba_state)] #On choisit l'action la plus probable
@@ -230,7 +233,7 @@ class Case(arcade.Sprite):
         x = WIDTH - WIDTH / 2 - text_w / 2
         y = HEIGHT - HEIGHT / 2 - text_h / 2
 
-        if self.value == 'B' :
+        if self.value == '5' :
             color = TEXT_COLOR_DARK
             d.text((x, y), text, fill=color, font=font)
             self.texture = arcade.Texture(f"{self.value}", img)
@@ -307,15 +310,17 @@ class MyGame(arcade.Window):
             #x, y = random.randrange(5), random.randrange(5)
             #action = (x, y)
             action = self.agent.best_action()
+            print(action)
             self.agent.do(action)
             #self.agent.update_policy()
             self.update_grid(action)
             self.agent.timer+=delta_time
 
     def update_grid(self,action):
-        case=self.grid_sprites[row][col]
+        case=self.grid_sprites[action[0]][action[1]]
         if case.is_face_down:
                 case.face_up()
+    
     def on_draw(self):
         """
         Render the screen.
