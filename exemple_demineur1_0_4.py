@@ -184,9 +184,6 @@ class Policy:
     """
 
     def best_action(self, state):
-        """print("hey")
-        print(state)
-        print("hello",self.mlp.predict([state]))"""
         self.proba_state = self.mlp.predict([state]) #Le RN fournit un vecteur de probabilité
         self.noise *= NOISE_DECAY
         self.proba_state += np.random.rand(len(self.proba_state)) * self.noise
@@ -311,8 +308,8 @@ class MyGame(arcade.Window):
         self.agent.timer+=delta_time
 
     def update_grid(self,case_up):
-        if case_up.is_face_down:
-                case_up.face_up()
+        if self.agent.environment.states[case_up[0]][case_up[1]].is_face_down:
+               self.agent.environment.states[(case_up)].face_up()
     
     def on_draw(self):
         """
