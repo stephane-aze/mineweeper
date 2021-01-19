@@ -131,7 +131,6 @@ class Agent:
             listeState.append(8)
     
     def mise_en_place(self, x, y):
-        #(2,0)
         cases_possibles = []
         self.transfoCase(x-1,y-1,cases_possibles)
         self.transfoCase(x,y-1,cases_possibles)
@@ -306,17 +305,14 @@ class MyGame(arcade.Window):
                 self.grid_res[(row, col)] = self.agent.environment.lines[row][col]
     
     def on_update(self, delta_time):
-        if self.agent.state not in self.agent.environment.bombs:
-            #x, y = random.randrange(5), random.randrange(5)
-            #action = (x, y)
-            action = self.agent.best_action()
-            self.agent.do(action)
-            self.update_grid(self.agent.case_precedente)
-            self.agent.timer+=delta_time
+        action = self.agent.best_action()
+        self.agent.do(action)
+        self.update_grid(self.agent.case_precedente)
+        self.agent.timer+=delta_time
 
     def update_grid(self,case_up):
         if case_up.is_face_down:
-                case.face_up()
+                case_up.face_up()
     
     def on_draw(self):
         """
@@ -336,6 +332,7 @@ class MyGame(arcade.Window):
         if key == arcade.key.R:
             self.agent.reset()
             self.setup()
+
 def main():
     environment = Environment(MINES)
     agent = Agent(environment)
