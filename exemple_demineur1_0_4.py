@@ -86,11 +86,11 @@ class Environment:
                 if self.lines[row][col] == '5':
                     self.bombs.append((row, col))
                 
-    def mine(self, state, action):
-        if self.states[action] == 5:
+    def mine(self, state,action,  case_courante):
+        if self.states[(case_courante)] == 5:
             reward = REWARD_IMPOSSIBLE
         else:
-            self.grid[action] = 1
+            self.grid[(case_courante)] = 1
             reward = REWARD_DEFAULT
             
         return action, reward
@@ -148,7 +148,7 @@ class Agent:
 
     def do(self, action):
         self.previous_state = self.board_to_state(self.environment.states, self.environment.grid)
-        self.state, self.reward = self.environment.mine(self.state, action)
+        self.state, self.reward = self.environment.mine(self.state, action,  self.case_courante)
         self.state = self.board_to_state(self.environment.states, self.environment.grid)
         self.score += self.reward
         self.last_action = action
