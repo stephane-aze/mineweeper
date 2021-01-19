@@ -103,7 +103,8 @@ class Agent:
     
     def reset(self):
         x, y = 3,3
-        #case_courante = (x, y)
+        self.case_courante = (x, y)
+        self.case_precedente = self.case_courante
         self.state = self.mise_en_place(x,y)
         self.previous_state = self.state
         self.score = 0
@@ -147,7 +148,6 @@ class Agent:
         return self.policy.best_action(self.state)
 
     def do(self, action):
-        print(action)
         self.previous_state = self.board_to_state(self.environment.states, self.environment.grid)
         self.state, self.reward = self.environment.mine(self.state, action)
         self.state = self.board_to_state(self.environment.states, self.environment.grid)
@@ -310,15 +310,12 @@ class MyGame(arcade.Window):
             #x, y = random.randrange(5), random.randrange(5)
             #action = (x, y)
             action = self.agent.best_action()
-            print(action)
             self.agent.do(action)
-            #self.agent.update_policy()
-            self.update_grid(action)
+            self.update_grid(self.agent.case_precedente)
             self.agent.timer+=delta_time
 
-    def update_grid(self,action):
-        case=self.grid_sprites[action[0]][action[1]]
-        if case.is_face_down:
+    def update_grid(self,case_up):
+        if case_up.is_face_down:
                 case.face_up()
     
     def on_draw(self):
