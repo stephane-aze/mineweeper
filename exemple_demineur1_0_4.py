@@ -309,7 +309,7 @@ class MyGame(arcade.Window):
 
     def update_grid(self,case_up):
         if self.agent.environment.states[case_up[0]][case_up[1]].is_face_down:
-               self.agent.environment.states[(case_up)].face_up()
+               self.agent.environment.states[case_up[0]][case_up[1]].face_up()
     
     def on_draw(self):
         """
