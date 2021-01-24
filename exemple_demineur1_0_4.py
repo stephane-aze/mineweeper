@@ -34,10 +34,10 @@ SCREEN_HEIGHT = (HEIGHT + MARGIN) * ROW_COUNT + MARGIN+60
 SCREEN_TITLE = "Démineur"
 #VALUES_MINES_NEAR = [1,2,3,4]
 MINES = """
+11111
+11111
 11211
-15351
-23532
-15351
+15251
 11211
 """
 # Colors
@@ -63,7 +63,7 @@ SQUARE_SIZE = 40
 TEXT_SIZE = 20
 #REWARD
 REWARD_GOAL = 60
-REWARD_DEFAULT = 1
+REWARD_DEFAULT = 10
 REWARD_STUCK = -6
 REWARD_IMPOSSIBLE = -60
 
@@ -79,21 +79,23 @@ class Environment:
         self.grid = {}  
         self.bombs =[]
         for row in range(self.height):
-            
             for col in range(len(self.lines[row])):
                 self.states[(row, col)] = self.lines[row][col]
                 self.grid[(row, col)] = 0
                 if self.lines[row][col] == '5':
                     self.bombs.append((row, col))
-                
-    def mine(self, state,action,  case_courante):
-        if self.states[(case_courante)] == 5:
-            reward = REWARD_IMPOSSIBLE
+        self.grid[(1,0)] = 1
+
+    def mine(self, state, action,  case_courante):
+        if action == 1:
+            if self.states[(case_courante[0],case_courante[1])] == '5':
+                reward = REWARD_IMPOSSIBLE
+            else:
+                self.grid[(case_courante[0],case_courante[1])] = 1
+                reward = REWARD_DEFAULT
         else:
-            self.grid[(case_courante)] = 1
-            reward = REWARD_DEFAULT
-            
-        return action, reward
+            reward = 0    
+        return reward, case_courante
 
 class Agent:
     def __init__(self, environment):
@@ -102,56 +104,93 @@ class Agent:
         self.reset()
     
     def reset(self):
-        x, y = 3,3
-        self.case_courante = (x, y)
+        x, y = 2,1
+        self.case_courante = []
+        self.case_courante.append(x)
+        self.case_courante.append(y)
         self.case_precedente = self.case_courante
-        self.state = self.mise_en_place(x,y)
+        self.grid_a = self.grid_en_place(x,y)
+        self.board_a = self.board_en_place(x,y)
+        self.state = self.board_to_state(self.board_a,self.grid_a)
         self.previous_state = self.state
         self.score = 0
         self.timer=0
 
-    def board_to_state(self, board, grid):
+    def board_to_state(self, board_a, grid_a):
         vector = []
-        for v in board:
-                if grid[v] == 1:
-                    if v == '1':
-                        vector.append(0)
-                    elif v == '2':
-                        vector.append(1)
-                    elif v == '3':
-                        vector.append(2)
-                    else :
-                        vector.append(5) 
+        compteur = 0 
+        while compteur < 8 :
+            if grid_a[compteur] == 1:
+                if board_a[compteur] == '1':
+                    vector.append(0)
+                elif board_a[compteur] == '2':
+                    vector.append(1)
+                else:
+                    vector.append(2)
+            else:
+                vector.append(8)
+            compteur = compteur + 1
         return vector
-    
-    def transfoCase(self,x,y,listeState):
-        if self.environment.grid[(x,y)]==0:
-            listeState.append(self.environment.states[(x,y)])
-        else:
-            listeState.append(8)
-    
-    def mise_en_place(self, x, y):
-        cases_possibles = []
-        self.transfoCase(x-1,y-1,cases_possibles)
-        self.transfoCase(x,y-1,cases_possibles)
-        self.transfoCase(x+1,y-1,cases_possibles)
-        self.transfoCase(x-1,y,cases_possibles)
-        self.transfoCase(x+1,y,cases_possibles)
-        self.transfoCase(x-1,y+1,cases_possibles)
-        self.transfoCase(x,y+1,cases_possibles)
-        self.transfoCase(x+1,y+1,cases_possibles)
 
-        return cases_possibles
+    def grid_en_place(self, x, y): 
+        grid_a = []
+        self.ajout_liste(x-1,y-1,"grille",grid_a)
+        self.ajout_liste(x-1,y,"grille",grid_a)
+        self.ajout_liste(x-1,y+1,"grille",grid_a)
+        self.ajout_liste(x,y-1,"grille",grid_a)
+        self.ajout_liste(x-1,y+1,"grille",grid_a)
+        self.ajout_liste(x+1,y-1,"grille",grid_a)
+        self.ajout_liste(x+1,y,"grille",grid_a)
+        self.ajout_liste(x+1,y+1,"grille",grid_a)
+        return grid_a
+
+    def board_en_place(self, x , y):
+        board_a = []
+        self.ajout_liste(x-1,y-1,"board",board_a)
+        self.ajout_liste(x-1,y,"board",board_a)
+        self.ajout_liste(x-1,y+1,"board",board_a)
+        self.ajout_liste(x,y-1,"board",board_a)
+        self.ajout_liste(x-1,y+1,"board",board_a)
+        self.ajout_liste(x+1,y-1,"board",board_a)
+        self.ajout_liste(x+1,y,"board",board_a)
+        self.ajout_liste(x+1,y+1,"board",board_a)
+        return board_a
+
+    def ajout_liste(self, x, y, la_liste, tableau):
+        if la_liste=="grille":
+            if x<5 and x>0 and y<5 and y>0:
+                tableau.append(self.environment.grid[(x,y)])
+            else:
+                tableau.append(-1)
+        else:
+            if x<5 and x>0 and y<5 and y>0:
+                tableau.append(self.environment.states[(x,y)])
+            else:
+                tableau.append(-1)
 
     def best_action(self):
         return self.policy.best_action(self.state)
 
     def do(self, action):
-        self.previous_state = self.board_to_state(self.environment.states, self.environment.grid)
-        self.state, self.reward = self.environment.mine(self.state, action,  self.case_courante)
-        self.state = self.board_to_state(self.environment.states, self.environment.grid)
+        self.previous_state = self.board_to_state(self.board_a,self.grid_a)
+        self.reward, self.case_precedente = self.environment.mine(self.state, action,  self.case_courante)
+        x, y = self.choix_case()
+        self.case_courante[0] = x
+        self.case_courante[1] = y
+        self.grid_a = self.grid_en_place(x,y)
+        self.board_a = self.board_en_place(x,y)
+        self.state = self.board_to_state(self.board_a,self.grid_a)
         self.score += self.reward
         self.last_action = action
+
+    def choix_case(self):
+        x = random.randint(0,4)
+        y = random.randint(0,4)
+        while(self.environment.grid[(x,y)]==1):
+            x = random.randint(0,4)
+            y = random.randint(0,4)
+        return x , y
+        
 
     def update_policy(self):
         self.policy.update(self.previous_state, self.state, self.last_action, self.reward)
@@ -169,7 +208,7 @@ class Policy:
                                 solver = 'sgd',
                                 learning_rate_init = self.learning_rate,
                                 warm_start = True)
-        self.actions = list(range(8)) # Crée une liste de size*size actions
+        self.actions = [0,1] # Crée une liste de size*size actions
         self.noise = NOISE_INIT
         
         #On initialise le ANN avec 8 entrées, 2 sorties
@@ -302,15 +341,18 @@ class MyGame(arcade.Window):
                 self.grid_res[(row, col)] = self.agent.environment.lines[row][col]
     
     def on_update(self, delta_time):
-        action = self.agent.best_action()
-        self.agent.do(action)
-        self.update_grid(self.agent.case_precedente)
-        self.agent.timer+=delta_time
+        if (self.agent.case_courante[0],self.agent.case_courante[1]) not in self.agent.environment.bombs:
+            action = self.agent.best_action()
+            self.agent.do(action)
+            self.update_grid(self.agent.case_precedente)
+            self.agent.timer+=delta_time
+        else:
+            self.agent.environment.mine(self.agent.state,self.agent.last_action,self.agent.case_courante)
 
     def update_grid(self,case_up):
-        print(case_up)
-        if self.agent.environment.grid[case_up[0]][case_up[1]].is_face_down:
-               self.agent.environment.grid[case_up[0]][case_up[1]].face_up()
+        if self.agent.environment.grid[(case_up[0],case_up[1])] == 0:
+            self.agent.environment.grid[(case_up[0],case_up[1])] = 1
+            self.grid_sprites[case_up[0]][case_up[1]].face_up()
     
     def on_draw(self):
         """
