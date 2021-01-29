@@ -96,6 +96,11 @@ class Environment:
         else:
             reward = 0    
         return reward, case_courante
+    def initial_grid(self):
+        for row in range(self.height):
+            for col in range(len(self.lines[row])):
+                self.grid[(row, col)] = 0
+        self.grid[(1,0)] = 1
 
 class Agent:
     def __init__(self, environment):
@@ -115,6 +120,7 @@ class Agent:
         self.previous_state = self.state
         self.score = 0
         self.timer=0
+        self.environment.initial_grid()
 
     def board_to_state(self, board_a, grid_a):
         vector = []
@@ -189,6 +195,7 @@ class Agent:
         while(self.environment.grid[(x,y)]==1):
             x = random.randint(0,4)
             y = random.randint(0,4)
+            
         return x , y
         
 
